@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="/Users/sachclements/DATA SCIENCE STUDIES/Portfolio Projects/Nashville Housing Data.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2708"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,16:mainNashvilleHousing"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">-- Data Cleaning of Nashville Housing dataset
+
+-- Check table has loaded correctly
+SELECT *
+FROM NashvilleHousing
+LIMIT 10;
+
+-- Need to fix SaleDate column to have the date only, no time
+SELECT DATE(SaleDate)
+FROM NashvilleHousing
+LIMIT 10;
+
+-- Make this date fix permanent
+UPDATE NashvilleHousing
+SET SaleDate = DATE(SaleDate);
+
+-- Check date fix worked
+SELECT *
+FROM NashvilleHousing
+LIMIT 10;
+
+-- Nulls in PropertyAddress column
+SELECT *
+FROM NashvilleHousing
+WHERE PropertyAddress IS null;
+
+-- Populate PropertyAddress nulls using ParcelID info's address
+SELECT a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, IFNULL(a.PropertyAddress, b.PropertyAddress)
+FROM NashvilleHousing a
+JOIN NashvilleHousing b
+ON a.ParcelID = b.ParcelID
+AND a.UniqueID &lt;&gt; b.UniqueID
+WHERE a.PropertyAddress IS NULL;
+
+UPDATE NashvilleHousing
+SET PropertyAddress = IFNULL(a.PropertyAddress, b.PropertyAddress)
+FROM NashvilleHousing a
+JOIN NashvilleHousing b
+ON a.ParcelID = b.ParcelID
+AND a.UniqueID &lt;&gt; b.UniqueID
+WHERE a.PropertyAddress IS NULL;
+
+-- Separate PropertyAddress into separate columns for Street address and City
+SELECT SUBSTR(PropertyAddress, 1, INSTR(PropertyAddress, ',')-1) AS Address, 
+	SUBSTR(PropertyAddress, INSTR(PropertyAddress, ',')+2, LENGTH(PropertyAddress)) AS City
+FROM NashvilleHousing;
+
+-- Add new columns for address split
+ALTER TABLE NashvilleHousing
+ADD PropertySplitAddress TEXT;
+
+UPDATE NashvilleHousing
+SET PropertySplitAddress = SUBSTR(PropertyAddress, 1, INSTR(PropertyAddress, ',')-1);
+
+ALTER TABLE NashvilleHousing
+ADD PropertySplitCity TEXT;
+
+UPDATE NashvilleHousing
+SET PropertySplitCity = SUBSTR(PropertyAddress, INSTR(PropertyAddress, ',')+2, LENGTH(PropertyAddress));
+
+-- Check the new columns were added correctly
+SELECT *
+FROM NashvilleHousing
+LIMIT 10;
+
+-- Separate OwnerAddress into separate columns for Street address and City
+SELECT SUBSTR(OwnerAddress, 1, INSTR(OwnerAddress, ',')-1) AS OwnerAddressSplit, 
+	SUBSTR(OwnerAddress, INSTR(OwnerAddress, ',')+2, (LENGTH(PropertyAddress))) AS OwnerCitySplit
+FROM NashvilleHousing;
+
+-- Add new columns for OwnerAddress split
+ALTER TABLE NashvilleHousing
+ADD OwnerSplitAddress TEXT;
+
+UPDATE NashvilleHousing
+SET OwnerSplitAddress = SUBSTR(OwnerAddress, 1, INSTR(OwnerAddress, ',')-1);
+
+ALTER TABLE NashvilleHousing
+ADD OwnerSplitCity TEXT;
+
+UPDATE NashvilleHousing
+SET OwnerSplitCity = SUBSTR(OwnerAddress, INSTR(OwnerAddress, ',')+2, LENGTH(OwnerAddress));
+
+SELECT SUBSTR(OwnerSplitCity, 1, INSTR(OwnerSplitCity, ',')-1) AS OwnerSplitCity, 
+	SUBSTR(OwnerSplitCity, INSTR(OwnerSplitCity, ',')+2, (LENGTH(OwnerSplitCity))) AS OwnerSplitState
+FROM NashvilleHousing;
+
+ALTER TABLE NashvilleHousing
+ADD OwnerSplitState TEXT;
+
+ALTER TABLE NashvilleHousing
+ADD OwnerCitySplit TEXT;
+
+UPDATE NashvilleHousing
+SET OwnerSplitState = SUBSTR(OwnerSplitCity, INSTR(OwnerSplitCity, ',')+2, LENGTH(OwnerSplitCity));
+
+UPDATE NashvilleHousing
+SET OwnerCitySplit = SUBSTR(OwnerSplitCity, 1, INSTR(OwnerSplitCity, ',')-1);
+
+UPDATE NashvilleHousing
+SET OwnerSplitCity = OwnerCitySplit;
+
+ALTER TABLE NashvilleHousing
+DROP COLUMN OwnerCitySplit;
+
+-- Check columns are fixed
+SELECT *
+FROM NashvilleHousing
+LIMIT 20;
+
+-- Correct Y/N in SoldAsVacant column
+SELECT DISTINCT(SoldAsVacant), COUNT(SoldAsVacant)
+FROM NashvilleHousing
+GROUP BY SoldAsVacant
+ORDER BY 2;
+
+SELECT SoldAsVacant, 
+	CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
+				WHEN SoldAsVacant = 'N' THEN 'No'
+				ELSE SoldAsVacant
+				END
+FROM NashvilleHousing;				
+
+UPDATE NashvilleHousing
+SET SoldAsVacant = CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
+				WHEN SoldAsVacant = 'N' THEN 'No'
+				ELSE SoldAsVacant
+				END;
+
+
+
+			</sql><current_tab id="0"/></tab_sql></sqlb_project>
